@@ -1,46 +1,54 @@
 import os
 import sys
 
-from torch.utils.data import DataLoader
+# Add project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.config.config import ModelConfig, TrainingConfig, get_config
-from src.data.dataset import get_mnist_dataset
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+
+from src.config.config import Config
 from src.models.mnist_cnn import MnistCNN
 from src.training.trainer import Trainer
 
 
 def main():
-    config_dict = get_config()
-    model_config = ModelConfig(
-        **{k: config_dict[k] for k in ModelConfig.__annotations__}
-    )
-    training_config = TrainingConfig(
-        **{k: config_dict[k] for k in TrainingConfig.__annotations__}
-    )
+    # Setup directories
+    Config.setup_directories()
 
-    model = MnistCNN(model_config)
-    print(f"Total trainable parameters: {model.count_parameters():,}")
+    # Set device
+    device = torch.device(Config.DEVICE if torch.cuda.is_available() else "cpu")
 
-    train_dataset = get_mnist_dataset(root="./data", train=True)
-    test_dataset = get_mnist_dataset(root="./data", train=False)
-
-    train_loader = DataLoader(
-        train_dataset, batch_size=training_config.batch_size, shuffle=True
-    )
-    test_loader = DataLoader(
-        test_dataset, batch_size=training_config.batch_size, shuffle=False
+    # Data loading
+    transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
     )
 
-    trainer = Trainer(model, training_config)
+    train_dataset = datasets.MNIST(
+        "data", train=True, download=True, transform=transform
+    )
+    val_dataset = datasets.MNIST("data", train=False, transform=transform)
 
-    for epoch in range(1, training_config.epochs + 1):
-        train_loss = trainer.train_epoch(train_loader)
-        test_loss, accuracy = trainer.evaluate(test_loader)
-        print(f"Epoch: {epoch}")
-        print(f"Train Loss: {train_loss:.4f}")
-        print(f"Test Loss: {test_loss:.4f}")
-        print(f"Accuracy: {accuracy:.4f}")
+    train_loader = DataLoader(train_dataset, batch_size=Config.BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=Config.BATCH_SIZE)
+
+    # Model, criterion, optimizer
+    model = MnistCNN(Config.get_instance()).to(device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=Config.LEARNING_RATE)
+
+    # Add parameter count check
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    print(f"Total trainable parameters: {count_parameters(model)}")
+
+    # Training
+    trainer = Trainer(model, criterion, optimizer, device)
+    trainer.train(train_loader, val_loader, Config.NUM_EPOCHS)
 
 
 if __name__ == "__main__":

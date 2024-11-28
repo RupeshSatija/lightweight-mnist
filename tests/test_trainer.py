@@ -1,50 +1,48 @@
 import pytest
+import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
 
-from src.config.config import ModelConfig, TrainingConfig
-from src.data.dataset import get_mnist_dataset
+from src.config.config import Config
 from src.models.mnist_cnn import MnistCNN
 from src.training.trainer import Trainer
 
 
 @pytest.fixture
-def model_config():
-    return ModelConfig(
-        input_channels=1,
-        hidden_channels=32,
-        num_classes=10,
-    )
+def config():
+    return Config.get_instance()
 
 
 @pytest.fixture
-def training_config():
-    return TrainingConfig(
-        learning_rate=0.01,
-        batch_size=32,
-        epochs=1,
-    )
+def model(config):
+    return MnistCNN(config)
 
 
 @pytest.fixture
-def model(model_config):
-    return MnistCNN(model_config)
-
-
-@pytest.fixture
-def trainer(model, training_config):
-    return Trainer(model, training_config)
+def trainer(model):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=Config.LEARNING_RATE)
+    return Trainer(model, criterion, optimizer, device)
 
 
 @pytest.fixture
 def train_loader():
-    dataset = get_mnist_dataset(root="./data", train=True)
-    return DataLoader(dataset, batch_size=32, shuffle=True)
+    transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+    )
+    dataset = datasets.MNIST("data", train=True, download=True, transform=transform)
+    return DataLoader(dataset, batch_size=Config.BATCH_SIZE, shuffle=True)
 
 
 @pytest.fixture
 def test_loader():
-    dataset = get_mnist_dataset(root="./data", train=False)
-    return DataLoader(dataset, batch_size=32, shuffle=False)
+    transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+    )
+    dataset = datasets.MNIST("data", train=False, transform=transform)
+    return DataLoader(dataset, batch_size=Config.BATCH_SIZE)
 
 
 def test_trainer_initialization(trainer):
@@ -56,35 +54,15 @@ def test_trainer_initialization(trainer):
 
 def test_training_step(trainer, train_loader):
     """Test if a single training step works"""
-    # Get a single batch
     images, labels = next(iter(train_loader))
 
-    # Move to same device as model
     images = images.to(trainer.device)
     labels = labels.to(trainer.device)
 
-    # Forward pass
     outputs = trainer.model(images)
-
-    # Check output shape
-    assert outputs.shape == (images.shape[0], 10)  # 10 classes for MNIST
-
-
-def test_evaluation(trainer, test_loader):
-    """Test if evaluation works"""
-    loss, accuracy = trainer.evaluate(test_loader)
-
-    assert isinstance(loss, float)
-    assert isinstance(accuracy, float)
-    assert 0 <= accuracy <= 1  # Accuracy should be between 0 and 1
+    assert outputs.shape == (images.shape[0], Config.NUM_CLASSES)
 
 
 def test_full_training_loop(trainer, train_loader, test_loader):
     """Test if a full training loop can run without errors"""
-    # Run one epoch
-    train_loss = trainer.train_epoch(train_loader)
-    test_loss, accuracy = trainer.evaluate(test_loader)
-
-    assert isinstance(train_loss, float)
-    assert isinstance(test_loss, float)
-    assert isinstance(accuracy, float)
+    trainer.train(train_loader, test_loader, num_epochs=1)

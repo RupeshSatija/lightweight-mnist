@@ -1,26 +1,40 @@
-from dataclasses import dataclass
-from typing import Any, Dict
-
-import torch
+from pathlib import Path
 
 
-@dataclass
-class ModelConfig:
-    conv1_channels: int = 8
-    conv2_channels: int = 16
-    fc_features: int = 32
+class Config:
+    # Base paths
+    ROOT_DIR = Path(__file__).parent.parent.parent
+    OUTPUT_DIR = ROOT_DIR / "outputs"
 
+    # Output subdirectories
+    METRICS_DIR = OUTPUT_DIR / "metrics"
+    PLOTS_DIR = OUTPUT_DIR / "plots"
+    CHECKPOINTS_DIR = OUTPUT_DIR / "checkpoints"
+    LOGS_DIR = OUTPUT_DIR / "logs"
 
-@dataclass
-class TrainingConfig:
-    batch_size: int = 128
-    epochs: int = 1
-    learning_rate: float = 0.003
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    # Training parameters
+    BATCH_SIZE = 32
+    LEARNING_RATE = 0.001
+    NUM_EPOCHS = 1
+    DEVICE = "cuda"  # or "cpu"
 
+    # Model parameters
+    NUM_CLASSES = 10
 
-def get_config() -> Dict[str, Any]:
-    model_config = ModelConfig()
-    training_config = TrainingConfig()
+    @classmethod
+    def setup_directories(cls):
+        """Create all necessary directories if they don't exist."""
+        dirs = [
+            cls.OUTPUT_DIR,
+            cls.METRICS_DIR,
+            cls.PLOTS_DIR,
+            cls.CHECKPOINTS_DIR,
+            cls.LOGS_DIR,
+        ]
+        for dir_path in dirs:
+            dir_path.mkdir(parents=True, exist_ok=True)
 
-    return {**model_config.__dict__, **training_config.__dict__}
+    @classmethod
+    def get_instance(cls):
+        """Returns an instance of the Config class."""
+        return cls()

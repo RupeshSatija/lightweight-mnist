@@ -92,4 +92,13 @@ htmlcov/
 mlruns/
 
 # Tensorboard
-runs/ 
+runs/
+
+# Training outputs
+wandb/               # If using Weights & Biases
+lightning_logs/      # If using PyTorch Lightning
+outputs/             # General outputs directory
+!outputs/*.csv       # Don't ignore CSV files (metrics)
+!outputs/metrics/    # Don't ignore metrics directory
+results/
+experiments/ 
