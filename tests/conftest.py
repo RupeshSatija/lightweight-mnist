@@ -1,10 +1,8 @@
-import pytest
-import torch
+import os
+import sys
 
+# Get the absolute path of the project root directory
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-@pytest.fixture(autouse=True)
-def set_random_seed():
-    """Set random seed for reproducibility"""
-    torch.manual_seed(42)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(42)
+# Add the project root directory to sys.path
+sys.path.insert(0, project_root)

@@ -23,7 +23,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements/requirements.txt
         pip install -r requirements/requirements-test.txt
+        pip install -e .
+
+    - name: List directory structure
+      run: |
+        tree -a || (apt-get update && apt-get install -y tree && tree -a)
 
     - name: Run parameter count and accuracy tests
+      working-directory: .
       run: |
-        pytest tests/test_model_requirements.py 
+        python -c "import sys; print(sys.path)"
+        pytest tests/test_model_requirements.py -v --import-mode=importlib
