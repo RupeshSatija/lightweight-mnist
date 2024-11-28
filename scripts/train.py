@@ -8,9 +8,9 @@ sys.path.append(project_root)
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
 
 from src.config.config import Config
+from src.data.dataset import get_mnist_dataset
 from src.models.mnist_cnn import MnistCNN
 from src.training.trainer import Trainer
 
@@ -22,15 +22,9 @@ def main():
     # Set device
     device = torch.device(Config.DEVICE if torch.cuda.is_available() else "cpu")
 
-    # Data loading
-    transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-    )
-
-    train_dataset = datasets.MNIST(
-        "data", train=True, download=True, transform=transform
-    )
-    val_dataset = datasets.MNIST("data", train=False, transform=transform)
+    # Data loading using our custom dataset implementation
+    train_dataset = get_mnist_dataset(root="data", train=True, augment=True)
+    val_dataset = get_mnist_dataset(root="data", train=False, augment=False)
 
     train_loader = DataLoader(train_dataset, batch_size=Config.BATCH_SIZE, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=Config.BATCH_SIZE)
@@ -49,6 +43,11 @@ def main():
     # Training
     trainer = Trainer(model, criterion, optimizer, device)
     trainer.train(train_loader, val_loader, Config.NUM_EPOCHS)
+
+    # Save augmentation samples
+    from src.data.dataset import visualize_augmentations
+
+    visualize_augmentations()
 
 
 if __name__ == "__main__":
