@@ -1,4 +1,6 @@
-# Lightweight MNIST Classifier
+# Lightweight MNIST
+
+![Build Status](https://github.com/RupeshSatija/lightweight-mnist/actions/workflows/model_tests.yml/badge.svg)
 
 A lightweight CNN implementation for MNIST classification using PyTorch.
 
