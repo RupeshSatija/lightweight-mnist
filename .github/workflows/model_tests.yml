@@ -18,19 +18,29 @@ jobs:
       with:
         python-version: '3.12'
 
+    - name: Verify project structure
+      run: |
+        echo "Current directory structure:"
+        find . -type f -name "*.py"
+        echo "\nChecking for __init__.py files:"
+        find src -type f -name "__init__.py"
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements/requirements.txt
         pip install -r requirements/requirements-test.txt
-        pip install -e .
+        # Install in develop mode with verbose output
+        pip install -v -e .
 
-    - name: List directory structure
+    - name: Verify package installation
       run: |
-        tree -a || (apt-get update && apt-get install -y tree && tree -a)
+        echo "Installed packages:"
+        pip list
+        echo "\nTrying to import the package:"
+        python -c "import src; print('src package location:', src.__file__)"
+        python -c "from src.data import dataset; print('dataset module location:', dataset.__file__)"
 
     - name: Run parameter count and accuracy tests
-      working-directory: .
       run: |
-        python -c "import sys; print(sys.path)"
-        pytest tests/test_model_requirements.py -v --import-mode=importlib
+        PYTHONPATH="${PYTHONPATH}:${PWD}" pytest tests/test_model_requirements.py -v --import-mode=importlib
